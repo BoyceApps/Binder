@@ -15,10 +15,11 @@ import Firebase
 import FirebaseCore
 import FirebaseAuth
 
-class BinderVC: UIViewController {
+class BinderVC: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        DataService.instance.updateUserPlaces()
 
     }
     

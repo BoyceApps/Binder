@@ -18,8 +18,9 @@ class InitialVC: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         Auth.auth().addStateDidChangeListener { (auth, user) in
-            //Go to Binder Controller with user info
+            //Go to Binder Controller
             if currentUser != nil{
+                DataService.instance.updateUserPlaces()
             self.performSegue(withIdentifier: "LoggedIn", sender: self)
             }
             
@@ -32,7 +33,6 @@ class InitialVC: UIViewController {
         }
     
     @IBAction func prepareForUnwind(segue: UIStoryboardSegue) {
-        
     }
 
 

@@ -18,6 +18,7 @@ import FirebaseAuth
 
 class LogInVC: UIViewController, LoginButtonDelegate {
 
+    @IBOutlet weak var activity: UIActivityIndicatorView!
     @IBOutlet weak var emailTxtField: UITextField!
     @IBOutlet weak var passwordTxtField: UITextField!
 
@@ -27,6 +28,8 @@ class LogInVC: UIViewController, LoginButtonDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        activity.isHidden = true
+        activity.stopAnimating()
         //Facebook Login Button
         self.loginButton.center = view.center
         self.loginButton.delegate = self
@@ -47,6 +50,8 @@ class LogInVC: UIViewController, LoginButtonDelegate {
             //User logged into Facebook successfully
             case .success(let grantedPermissions, let declinedPermissions, let accessToken):
                 print("User logged in on facebook with \(grantedPermissions) and \(declinedPermissions)")
+                activity.isHidden = false
+                activity.startAnimating()
                 let credential = FacebookAuthProvider.credential(withAccessToken: (accessToken.authenticationToken))
                 
                 Auth.auth().signInAndRetrieveData(with: credential) { (authResult, error) in
@@ -56,13 +61,68 @@ class LogInVC: UIViewController, LoginButtonDelegate {
                         return
                     }else{
                     //logged in firebase successful
-                    print("Logged into Firebase")
-                        self.performSegue(withIdentifier: "UserLoggedIn", sender: self)
+                        if let user = authResult?.user {
+                            print("Logged into Firebase")
+                            currentUser = Auth.auth().currentUser
+                            print(currentUser)
+                            DataService.instance.updateUserPlaces()
+                            if(true){
+                                var profilePicData = Data()
+                                // let storageRef = storage.reference().child("Users")
+                                let profilePicRef = DataService.instance.REF_STORAGE_USERS.child(user.uid+"/profile_pic.jpg")
+                                print(profilePicRef)
+                                
+                                var profilePic = FBSDKGraphRequest(graphPath: "me/picture", parameters: ["height": 300, "width" : 300, "redirect" : false], httpMethod: "GET")
+                                
+                                profilePic?.start(completionHandler: { (connection, result, error) in
+                                    if (error == nil){
+                                        
+                                        let dictionary = result as? NSDictionary
+                                        
+                                        let data = dictionary?.object(forKey: "data") as? NSDictionary
+                                        
+                                        
+                                        let urlPic = (data?.object(forKey: "url"))! as! String
+                                        
+                                        if let imageData = NSData(contentsOf: NSURL(string: urlPic)! as URL){
+                                    
+                                            
+                                            let uploadTask = profilePicRef.putData(imageData as Data, metadata: nil){
+                                                metadata, error in
+                                                
+                                                if (error == nil){
+                                                    DataService.instance.REF_USERS.child((currentUser?.uid)!+"/photoRef").setValue(metadata?.path)
+                                                } else {
+                                                    print ("Error downloading image")
+                                                }
+                                            }
+                                            profilePicData = imageData as Data
+                                            //currentUser?.photoURL = profilePicData
+                                        }
+                                    }
+                                })
+                      
+                                
+                            }
+                            
+                            let userData = ["provider": user.providerID, "email": user.email, "name": user.displayName, "photoRef": "Users/"+(currentUser?.uid)!+"/profile_pic.jpg"]
+                            
+                            DataService.instance.createDBUser(uid: user.uid, userData: userData as Dictionary<String, Any>)
+                            
+                           
+                            
+                            currentUser = user
+                            if currentUser != nil {
+                                self.performSegue(withIdentifier: "UserLoggedIn", sender: self)
+                            }
+                        }
+                    
                     }
                     
                     
                 }
         }
+        
     }
     
     
