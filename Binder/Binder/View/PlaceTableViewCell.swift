@@ -9,7 +9,7 @@
 import UIKit
 
 class PlaceTableViewCell: UITableViewCell {
-
+    
     @IBOutlet weak var name: UILabel!
     @IBOutlet weak var starRating: UIImageView!
     @IBOutlet weak var photo: UIImageView!
@@ -24,13 +24,13 @@ class PlaceTableViewCell: UITableViewCell {
         photo.layer.borderColor = #colorLiteral(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
         photo.layer.borderWidth = 2
     }
-
+    
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
         
-         self.backgroundColor = #colorLiteral(red: 0.1764705926, green: 0.4980392158, blue: 0.7568627596, alpha: 1)
-
+        self.backgroundColor = #colorLiteral(red: 0.1764705926, green: 0.4980392158, blue: 0.7568627596, alpha: 1)
+        
         // Configure the view for the selected state
     }
-
+    
 }

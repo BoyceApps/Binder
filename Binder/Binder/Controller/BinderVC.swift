@@ -16,24 +16,15 @@ import FirebaseCore
 import FirebaseAuth
 
 class BinderVC: UITabBarController {
-
     override func viewDidLoad() {
         super.viewDidLoad()
-        DataService.instance.updateUserPlaces()
-
-    }
-    
-    @IBAction func logOutButtonPressed(_ sender: Any) {
-        do{
-            try Auth.auth().signOut()
-            FBSDKAccessToken.setCurrent(nil)
-            self.performSegue(withIdentifier: "UnwindToInitialVC", sender: self)
-        }catch{
-            print("Error signing out \(error)")
-        }
-        print("User logged out")
         
-    }
+        if currentUser?.uid != nil{
+            DataService.instance.getUserPhoto(userUid: (currentUser?.uid)!)
+            DataService.instance.getMyPlacePhotos()
+        }
+        //DataService.instance.updateUserPlaces()
+        
+    }    
     
-
 }

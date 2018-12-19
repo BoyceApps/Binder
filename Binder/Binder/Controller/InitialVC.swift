@@ -19,22 +19,24 @@ class InitialVC: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         Auth.auth().addStateDidChangeListener { (auth, user) in
             //Go to Binder Controller
-            if currentUser != nil{
+            if currentUser?.uid != nil{
                 DataService.instance.updateUserPlaces()
-            self.performSegue(withIdentifier: "LoggedIn", sender: self)
+                DataService.instance.getMyPlacePhotos()
+                DataService.instance.updateUserChats()
+                self.performSegue(withIdentifier: "LoggedIn", sender: self)
             }
             
         }
     }
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        }
+        
+    }
     
     @IBAction func prepareForUnwind(segue: UIStoryboardSegue) {
     }
-
-
+    
+    
 }
 

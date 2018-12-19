@@ -13,10 +13,11 @@ import SwiftyJSON
 import CoreLocation
 
 class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDelegate, UITableViewDataSource {
-  
-  
+    
     var myPlaces = MY_PLACES
+    
     var placeArray = [Place]()
+    
     var localPlaces: [Place]?{
         didSet{
             activity.stopAnimating()
@@ -30,14 +31,15 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
     var longitude: Double = -81.221063
     
     var locationManager: CLLocationManager!
-
+    
     @IBOutlet weak var activity: UIActivityIndicatorView!
     
     @IBOutlet weak var placesTableView: UITableView!
     
     override func viewWillAppear(_ animated: Bool) {
-        DataService.instance.updateUserPlaces()
-        myPlaces = MY_PLACES
+        DataService.instance.updateUserPlaces { (userPlaces) in
+            self.myPlaces = userPlaces
+        }
         placesTableView.reloadData()
     }
     
@@ -58,11 +60,9 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
         
-        var place = localPlaces![indexPath.row]
-        
+        let place = localPlaces![indexPath.row]
         
         cell.accessoryType = place.selected ? .checkmark: .none
-        
         
         cell.name.text = place.name
         
@@ -81,8 +81,6 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
                             cell.photo.image = UIImage(data: data!)
                         }
                     }
-                    
-                    
                 })
             }
         }
@@ -99,34 +97,33 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
         
         var place = localPlaces![indexPath.row]
         
-            place.selected = !place.selected
-            //if selected is true save to myPlaces
-            if (place.selected == true){
-                print("Adding Place")
-                cell.accessoryType = .checkmark
-                
-                var placeDict = Dictionary<String,Any>()
-                placeDict.updateValue(place.name, forKey: "name")
-                placeDict.updateValue(place.latitude, forKey: "lat")
-                placeDict.updateValue(place.longitude, forKey: "lng")
-                placeDict.updateValue("Places/\(place.placeID)/placePic.jpg", forKey: "photoRef")
-                placeDict.updateValue(place.rating, forKey: "rating")
-              
-                DataService.instance.updateUserPlaces(placeID: place.placeID, userPlace: placeDict)
-            }else{
-                print("Removing Place")
-                cell.accessoryType = .none
-                myPlaces[place.placeID] = nil
-                DataService.instance.removeUserPlace(placeID: place.placeID)
+        place.selected = !place.selected
+        //if selected is true save to myPlaces
+        if (place.selected == true){
+            print("Adding Place")
+            cell.accessoryType = .checkmark
+            
+            var placeDict = Dictionary<String,Any>()
+            placeDict.updateValue(place.name, forKey: "name")
+            placeDict.updateValue(place.latitude, forKey: "lat")
+            placeDict.updateValue(place.longitude, forKey: "lng")
+            placeDict.updateValue("Places/\(place.placeID)/placePic.jpg", forKey: "photoRef")
+            placeDict.updateValue(place.rating, forKey: "rating")
+            
+            DataService.instance.addUserPlace(placeID: place.placeID, userPlace: placeDict)
+        }else{
+            print("Removing Place")
+            cell.accessoryType = .none
+            myPlaces[place.placeID] = nil
+            DataService.instance.removeUserPlace(placeID: place.placeID) { (userPlaces) in
+                self.myPlaces = userPlaces
             }
-        
+        }
         localPlaces![indexPath.row] = place
-    
         
         placesTableView.deselectRow(at: indexPath, animated: true)
         
         placesTableView.reloadData()
-        
     }
     
     //Get Location
@@ -153,40 +150,30 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
         self.locationManager.delegate = nil
         
         if let currentLocation: CLLocation = locations.last {
-            
             //print(currentLocation)
             latitude = currentLocation.coordinate.latitude
             longitude = currentLocation.coordinate.longitude
-            
             getPlaces()
         }
-        
-        
     }
     
     //use location to find local bars
     func getPlaces(){
-        
         let params: [String:Any] = ["key": googleApiKey, "radius": "10000", "keyword": "bar", "location": "\(latitude)," + "\(longitude)",
             "rankBy": "distance", "type": "bar"]
         
         print("requesting places")
-        
         Alamofire.request(GoogleApiPlaceSearchJson, method: .get, parameters: params)
             .responseJSON {
                 response in
                 if response.result.isSuccess {
-                    
                     print("got Data")
-                    
                     let json : JSON = JSON(response.result.value!)
-                    
                     
                     self.createFrom(incomingJSON: json)
                     
                     print("Setting local places")
                     self.placesTableView.reloadData()
-                    
                 }
         }
     }
@@ -206,73 +193,67 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
                 var exists = false
                 
                 if name.contains("Applebee"){
-                        exists = true
-                    }
+                    exists = true
+                }
                 if name.contains("Charley"){
-                        exists = true
-                    }
+                    exists = true
+                }
                 if name.contains("Buffalo"){
-                        exists = true
-                    }
+                    exists = true
+                }
                 for myPlace in self.myPlaces {
                     if myPlace.key == placeID{
                         exists = true
                     }
                 }
                 
-               if !exists {
-                
+                if !exists {
+                    
                     if(photos.count > 0){
                         let photoDict:NSDictionary = photos[0] as! NSDictionary
                         if  let photoReference = photoDict["photo_reference"],
                             let latitude  = location["lat"],
                             let longitude = location["lng"]{
-            
+                            
                             //Get Place Photo
                             let photoParams: [String:Any] = ["maxwidth" : 400, "photoreference" : "\(String(describing: photoReference))", "key": googleApiKey]
                             
-                                Alamofire.request(GoogleApiPlaceSearchPhoto, method: .get, parameters: photoParams).response{
-                                    (DefaultDataResponse) in
-         
-                                        if let imageData = DefaultDataResponse.data {
-                                            
-                                                let placePicRef = DataService.instance.REF_STORAGE_PLACES.child(placeID+"/placePic.jpg")
-                                            
-                                                let uploadTask = placePicRef.putData(imageData as Data, metadata: nil){
-                                                    metadata, error in
-                                                    
-                                                    if (error == nil){
-                                                        //successfully uploaded data to storage
-                                                        print("Adding Place to local places")
-                                                        place = Place(name: name, rating: rating, latitude: longitude as! Double, longitude: latitude as! Double, placeID: placeID, photoReference: photoReference as! String, selected: false)
-                                                        place!.photo = imageData
-                                                        if self.localPlaces == nil {
-                                                            self.localPlaces = []
-                                                        }
-                                                        self.localPlaces?.append(place!)
-                                                        
-                                                        let placeData = ["name": name, "rating": rating, "lat": latitude, "lng": longitude, "photoRef": metadata?.path]
-                                                        
-                                                        
-                                                        DataService.instance.createNewPlace(placeID: placeID, placeData: placeData as Dictionary<String, Any>)
-                                                        
-                                                    } else {
-                                                        print ("Error downloading image")
-                                                    }
-                                                }
-                                        }
-                                        
-                                    }
+                            Alamofire.request(GoogleApiPlaceSearchPhoto, method: .get, parameters: photoParams).response{
+                                (DefaultDataResponse) in
+                                
+                                if let imageData = DefaultDataResponse.data {
                                     
+                                    let placePicRef = DataService.instance.REF_STORAGE_PLACES.child(placeID+"/placePic.jpg")
+                                    
+                                    let uploadTask = placePicRef.putData(imageData as Data, metadata: nil){
+                                        metadata, error in
+                                        
+                                        if (error == nil){
+                                            //successfully uploaded data to storage
+                                            print("Adding Place to local places")
+                                            place = Place(name: name, rating: rating, latitude: longitude as! Double, longitude: latitude as! Double, placeID: placeID, photoReference: photoReference as! String, selected: false)
+                                            place!.photo = imageData
+                                            if self.localPlaces == nil {
+                                                self.localPlaces = []
+                                            }
+                                            self.localPlaces?.append(place!)
+                                            
+                                            let placeData = ["name": name, "rating": rating, "lat": latitude, "lng": longitude, "photoRef": metadata?.path]
+                                            
+                                            DataService.instance.createNewPlace(placeID: placeID, placeData: placeData as Dictionary<String, Any>)
+                                            
+                                        } else {
+                                            print ("Error downloading image")
+                                        }
+                                    }
                                 }
+                            }
                         }
                     }
-                    
                 }
-
             }
-        
         }
+    }
     
     
     @IBAction func doneBtnPressed(_ sender: UIButton) {
@@ -280,5 +261,5 @@ class FindPlacesVC: UIViewController, CLLocationManagerDelegate, UITableViewDele
     }
     
     
-
+    
 }

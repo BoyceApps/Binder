@@ -11,24 +11,24 @@ import UIKit
 class Message {
     
     private var _content: String
-    private var _senderId: String
+    private var _senderUid: String
     private var _date: String
     
     var content: String {
         return _content
     }
     
-    var senderId: String {
-        return _senderId
+    var senderUid: String {
+        return _senderUid
     }
     
     var date: String {
         return _date
     }
     
-    init(content: String, senderId: String, date: String) {
+    init(content: String, senderUid: String, date: String) {
         self._content = content
-        self._senderId = senderId
+        self._senderUid = senderUid
         self._date = date
     }
 }
